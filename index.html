@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f0663f" />
+<!-- 홈 화면에 추가하면 앱처럼 열려요 -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="BP 관리자" />
+<title>베이비플레이트 관리자</title>
+<style>
+  :root { --orange:#f0663f; --bg:#faf7f2; --line:#eadfd2; --grey:#8a8378; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",sans-serif; background:var(--bg); color:#3d3428; padding:20px; max-width:860px; margin:0 auto; }
+  h1 { font-size:22px; margin-bottom:4px; }
+  h2 { font-size:16px; margin:28px 0 10px; display:flex; align-items:center; gap:8px; }
+  h2 .count { background:var(--orange); color:#fff; border-radius:99px; font-size:12px; padding:2px 8px; }
+  .warn { background:#fff3e6; border:1px solid #f5c9a8; border-radius:10px; padding:10px 12px; font-size:12.5px; color:#8a4b12; margin:10px 0 16px; line-height:1.5; }
+  .keyrow { display:flex; gap:8px; }
+  .keyrow input { flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:13px; }
+  button { border:0; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; background:#efe8de; color:#3d3428; }
+  button.primary { background:var(--orange); color:#fff; }
+  button.danger { background:#fdeaea; color:#c0392b; }
+  button.small { padding:5px 9px; font-size:12px; border-radius:8px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .card h3 { font-size:15px; margin-bottom:2px; }
+  .meta { font-size:12px; color:var(--grey); margin-bottom:8px; line-height:1.6; }
+  .badge { display:inline-block; font-size:11px; background:#f2eee8; border-radius:6px; padding:2px 7px; margin-right:4px; }
+  .badge.status { background:#fdeaea; color:#c0392b; font-weight:700; }
+  .fields { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:8px 0; }
+  .fields label { font-size:11px; color:var(--grey); display:block; }
+  .fields input { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; font-size:13px; }
+  .fields .wide { grid-column:1 / -1; }
+  .photos { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+  .photos img { width:84px; height:84px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+  .photo-item { position:relative; }
+  .photo-item .del { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.55); color:#fff; border-radius:6px; padding:1px 6px; font-size:11px; }
+  .actions { display:flex; gap:8px; margin-top:8px; }
+  .empty { color:var(--grey); font-size:13px; padding:8px 2px; }
+  .tip { font-size:12px; color:var(--grey); margin:4px 0 10px; line-height:1.5; }
+  .license { max-width:100%; border-radius:10px; border:1px solid var(--line); margin:8px 0; }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#3d3428; color:#fff; padding:10px 18px; border-radius:99px; font-size:13px; display:none; z-index:9; }
+  /* 섹션 바로가기 (모바일에서 스크롤 대신 탭 이동) */
+  .nav { position:sticky; top:0; background:var(--bg); display:flex; gap:6px; overflow-x:auto; padding:10px 0; z-index:5; -webkit-overflow-scrolling:touch; }
+  h2 { scroll-margin-top: 60px; } /* 바로가기로 이동 시 고정 내비에 제목이 가리지 않게 */
+  .nav a { flex:0 0 auto; text-decoration:none; color:#3d3428; background:#fff; border:1px solid var(--line); border-radius:99px; padding:7px 12px; font-size:12.5px; font-weight:700; white-space:nowrap; }
+  .nav a b { color:var(--orange); }
+  /* ── 모바일 ── */
+  @media (max-width: 560px) {
+    body { padding:12px; }
+    h1 { font-size:19px; }
+    /* iOS는 input 글자가 16px보다 작으면 포커스 시 화면을 확대해요 */
+    input, .fields input, .keyrow input { font-size:16px !important; }
+    button { min-height:44px; }
+    button.small { min-height:36px; }
+    .del { min-height:0 !important; }
+    .keyrow { flex-wrap:wrap; }
+    .keyrow input { flex:1 1 100%; }
+    .fields { grid-template-columns:1fr 1fr; }
+    .fields .wide { grid-column:1 / -1; }
+    .photos img { width:31%; height:auto; aspect-ratio:1; }
+    .actions { flex-wrap:wrap; }
+    .actions button, .actions a { flex:1 1 auto; }
+    .actions a button { width:100%; }
+  }
+</style>
+</head>
+<body>
+<h1>🍼 베이비플레이트 관리자</h1>
+<p class="tip">식당 제안 승인, 좌표 수정, 사진·제보·사장님 인증을 한 화면에서 처리해요.</p>
+
+<div class="warn">
+  ⚠️ 이 페이지는 <b>Supabase 서비스 키(sb_secret_…)</b>로 동작해요.
+  키는 이 브라우저에만 저장되고 어디로도 전송되지 않지만(Supabase 호출 제외),
+  <b>이 파일과 키를 절대 다른 사람과 공유하거나 웹에 올리지 마세요.</b>
+  키는 Supabase 대시보드 → Project Settings → API Keys에서 확인해요.
+</div>
+<div class="keyrow">
+  <input id="key" type="password" placeholder="sb_secret_... 서비스 키 붙여넣기" />
+  <button class="primary" onclick="connect()">연결</button>
+  <button onclick="localStorage.removeItem('bp_admin_key');location.reload()">키 지우기</button>
+</div>
+
+<div id="app" style="display:none">
+  <nav class="nav">
+    <a href="#s-pending">🏪 대기 <b id="n-pending">0</b></a>
+    <a href="#s-approved">✅ 승인됨 <b id="n-approved">0</b></a>
+    <a href="#s-photos">📷 사진 <b id="n-photos">0</b></a>
+    <a href="#s-reports">🙋 제보 <b id="n-reports">0</b></a>
+    <a href="#s-owners">👨‍🍳 인증 <b id="n-owners">0</b></a>
+    <a href="#" onclick="loadAll();return false">🔄 새로고침</a>
+  </nav>
+
+  <h2 id="s-pending">🏪 승인 대기 식당 <span class="count" id="c-pending">0</span></h2>
+  <p class="tip">status가 approved가 아닌 제안 전부예요(오타 상태 포함 — 빨간 뱃지로 표시).
+  좌표가 제안자 위치로 잘못 들어오는 경우가 많으니, <b>카카오맵에서 장소 검색 → 우클릭 → 좌표 복사</b>로 고친 뒤 승인하세요.</p>
+  <div id="pending"></div>
+
+  <h2 id="s-approved">✅ 승인된 식당 정보 수정 <span class="count" id="c-approved">0</span></h2>
+  <p class="tip">이미 승인된 식당의 좌표·주소가 틀렸다면 여기서 바로 고쳐요. 앱은 재실행 시 자동 반영돼요.</p>
+  <div id="approved"></div>
+
+  <h2 id="s-photos">📷 승인 대기 사진 <span class="count" id="c-photos">0</span></h2>
+  <p class="tip">식당별 묶음으로 한 번에 승인·거절해요. 승인된 묶음의 첫 장이 대표 사진이 돼요.</p>
+  <div id="photos"></div>
+
+  <h2 id="s-reports">🙋 정보 제보 <span class="count" id="c-reports">0</span></h2>
+  <div id="reports"></div>
+
+  <h2 id="s-owners">👨‍🍳 사장님 인증 요청 <span class="count" id="c-owners">0</span></h2>
+  <p class="tip">사업자등록증 확인 후 승인하면 해당 식당에 인증 뱃지가 붙어요.</p>
+  <div id="owners"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = "https://pjiculucfbpovrmmzyhg.supabase.co/rest/v1";
+let KEY = localStorage.getItem("bp_admin_key") || "";
+
+const $ = (id) => document.getElementById(id);
+// 섹션 제목 카운트 + 상단 바로가기 칩 카운트를 함께 갱신해요
+const setCount = (name, n) => {
+  $(`c-${name}`).textContent = n;
+  const chip = $(`n-${name}`);
+  if (chip) chip.textContent = n;
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(() => (t.style.display = "none"), 2500);
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(`${BASE}/${path}`, {
+    ...opts,
+    headers: {
+      apikey: KEY,
+      Authorization: `Bearer ${KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return opts.method ? null : res.json();
+}
+
+async function connect() {
+  KEY = $("key").value.trim() || KEY;
+  if (!KEY) return toast("서비스 키를 입력해주세요");
+  try {
+    await api("community_restaurants?select=id&limit=1");
+    localStorage.setItem("bp_admin_key", KEY);
+    $("app").style.display = "block";
+    loadAll();
+  } catch (e) {
+    toast("연결 실패 — 키를 확인해주세요");
+    console.error(e);
+  }
+}
+
+function loadAll() { loadPending(); loadApproved(); loadPhotos(); loadReports(); loadOwners(); }
+
+/* ── 식당 카드 (대기/승인 공용) ── */
+function restaurantCard(r, approved) {
+  const photos = (r.photo_urls?.length ? r.photo_urls : r.photo_url ? [r.photo_url] : [])
+    .map((p) => `<img src="${esc(p)}" alt="">`).join("");
+  const statusBadge = approved ? "" :
+    `<span class="badge status">status: ${esc(r.status)}</span>`;
+  return `<div class="card" id="r-${r.id}">
+    <h3>${esc(r.name)}</h3>
+    <div class="meta">${statusBadge}
+      <span class="badge">${esc(r.category)}</span>
+      <span class="badge">제안: ${esc(r.submitted_by ?? "익명")}</span>
+      <span class="badge">${esc((r.age_bands ?? []).join(","))}</span>
+      <span class="badge">${esc((r.amenities ?? []).join(","))}</span>
+    </div>
+    ${photos ? `<div class="photos">${photos}</div>` : ""}
+    <div class="fields">
+      <div class="wide"><label>이름</label><input id="name-${r.id}" value="${esc(r.name)}"></div>
+      <div><label>지역 표시</label><input id="region-${r.id}" value="${esc(r.region)}"></div>
+      <div><label>주소</label><input id="address-${r.id}" value="${esc(r.address)}"></div>
+      <div><label>위도 lat</label><input id="lat-${r.id}" value="${esc(r.lat)}"></div>
+      <div><label>경도 lng</label><input id="lng-${r.id}" value="${esc(r.lng)}"></div>
+    </div>
+    <div class="actions">
+      <a href="https://map.kakao.com/?q=${encodeURIComponent(r.address || r.name)}" target="_blank"><button class="small">🗺️ 카카오맵에서 확인</button></a>
+      ${approved
+        ? `<button class="primary" onclick="saveRestaurant('${r.id}', null)">수정 저장</button>
+           <button class="danger" onclick="setStatus('${r.id}','rejected')">내리기</button>`
+        : `<button class="primary" onclick="saveRestaurant('${r.id}','approved')">저장 후 승인 ✓</button>
+           <button class="danger" onclick="setStatus('${r.id}','rejected')">거절</button>`}
+    </div>
+  </div>`;
+}
+
+async function loadPending() {
+  const rows = await api(
+    "community_restaurants?status=not.in.(approved,rejected)&order=created_at.desc&select=id,name,category,region,address,lat,lng,age_bands,amenities,submitted_by,status,photo_url,photo_urls");
+  setCount("pending", rows.length);
+  $("pending").innerHTML = rows.length
+    ? rows.map((r) => restaurantCard(r, false)).join("")
+    : `<div class="empty">대기 중인 제안이 없어요 🎉</div>`;
+}
+
+async function loadApproved() {
+  const rows = await api(
+    "community_restaurants?status=eq.approved&order=created_at.desc&select=id,name,category,region,address,lat,lng,age_bands,amenities,submitted_by,status,photo_url,photo_urls");
+  setCount("approved", rows.length);
+  $("approved").innerHTML = rows.length
+    ? rows.map((r) => restaurantCard(r, true)).join("")
+    : `<div class="empty">승인된 식당이 없어요</div>`;
+}
+
+async function saveRestaurant(id, statusOrNull) {
+  const body = {
+    name: $(`name-${id}`).value.trim(),
+    region: $(`region-${id}`).value.trim(),
+    address: $(`address-${id}`).value.trim(),
+    lat: parseFloat($(`lat-${id}`).value) || null,
+    lng: parseFloat($(`lng-${id}`).value) || null,
+  };
+  if (statusOrNull) body.status = statusOrNull;
+  try {
+    await api(`community_restaurants?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(body) });
+    toast(statusOrNull === "approved" ? "승인했어요 ✓" : "저장했어요 ✓");
+    loadPending(); loadApproved();
+  } catch (e) { toast("실패: " + e.message); }
+}
+
+async function setStatus(id, status) {
+  try {
+    await api(`community_restaurants?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    toast(status === "rejected" ? "거절했어요" : "변경했어요");
+    loadPending(); loadApproved();
+  } catch (e) { toast("실패: " + e.message); }
+}
+
+/* ── 사진 ── */
+async function loadPhotos() {
+  const rows = await api(
+    "restaurant_photos?status=eq.pending&order=created_at.desc&select=id,restaurant_id,photo,submitted_by,sort_order,created_at");
+  setCount("photos", rows.length);
+  if (!rows.length) { $("photos").innerHTML = `<div class="empty">대기 중인 사진이 없어요 🎉</div>`; return; }
+  const groups = {};
+  for (const row of rows) (groups[row.restaurant_id] ??= []).push(row);
+  $("photos").innerHTML = Object.entries(groups).map(([rid, list]) => `
+    <div class="card">
+      <h3>${esc(rid)}</h3>
+      <div class="meta">올린 사람: ${esc(list[0].submitted_by ?? "익명")} · ${list.length}장</div>
+      <div class="photos">${list.map((p) => `
+        <span class="photo-item">
+          <img src="${esc(p.photo)}" alt="">
+          <button class="del" onclick="photoStatus(['${p.id}'],'rejected')">✕</button>
+        </span>`).join("")}</div>
+      <div class="actions">
+        <button class="primary" onclick="photoStatus(${JSON.stringify(list.map((p) => p.id)).replaceAll('"', "'")},'approved')">모두 승인 ✓</button>
+        <button class="danger" onclick="photoStatus(${JSON.stringify(list.map((p) => p.id)).replaceAll('"', "'")},'rejected')">모두 거절</button>
+      </div>
+    </div>`).join("");
+}
+
+async function photoStatus(ids, status) {
+  try {
+    await api(`restaurant_photos?id=in.(${ids.join(",")})`, { method: "PATCH", body: JSON.stringify({ status }) });
+    toast(status === "approved" ? `${ids.length}장 승인 ✓` : `${ids.length}장 거절`);
+    loadPhotos();
+  } catch (e) { toast("실패: " + e.message); }
+}
+
+/* ── 제보 ── */
+async function loadReports() {
+  const rows = await api(
+    "restaurant_reports?status=eq.pending&order=created_at.desc&select=id,restaurant_name,message,submitted_by,created_at");
+  setCount("reports", rows.length);
+  $("reports").innerHTML = rows.length ? rows.map((r) => `
+    <div class="card">
+      <h3>${esc(r.restaurant_name)}</h3>
+      <div class="meta">${esc(r.submitted_by ?? "익명")} · ${new Date(r.created_at).toLocaleString("ko-KR")}</div>
+      <p style="font-size:13.5px; line-height:1.6; margin:6px 0">${esc(r.message)}</p>
+      <div class="actions"><button class="primary" onclick="reportDone('${r.id}')">처리 완료 ✓</button></div>
+    </div>`).join("") : `<div class="empty">대기 중인 제보가 없어요 🎉</div>`;
+}
+
+async function reportDone(id) {
+  try {
+    await api(`restaurant_reports?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status: "done" }) });
+    toast("처리 완료 ✓"); loadReports();
+  } catch (e) { toast("실패: " + e.message); }
+}
+
+/* ── 사장님 인증 ── */
+async function loadOwners() {
+  const rows = await api(
+    "owner_verifications?status=eq.pending&order=created_at.desc&select=id,restaurant_name,business_license,submitted_by,created_at");
+  setCount("owners", rows.length);
+  $("owners").innerHTML = rows.length ? rows.map((o) => `
+    <div class="card">
+      <h3>${esc(o.restaurant_name)}</h3>
+      <div class="meta">${esc(o.submitted_by ?? "익명")} · ${new Date(o.created_at).toLocaleString("ko-KR")}</div>
+      ${o.business_license ? `<img class="license" src="${esc(o.business_license)}" alt="사업자등록증">` : `<div class="meta">등록증 이미지 없음</div>`}
+      <div class="actions">
+        <button class="primary" onclick="verifyOwner('${o.id}', '${esc(o.restaurant_name).replaceAll("'", "\\'")}')">인증 승인 ✓ (뱃지 부여)</button>
+        <button class="danger" onclick="ownerStatus('${o.id}','rejected')">거절</button>
+      </div>
+    </div>`).join("") : `<div class="empty">대기 중인 인증 요청이 없어요 🎉</div>`;
+}
+
+async function verifyOwner(id, name) {
+  try {
+    await api(`owner_verifications?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status: "verified" }) });
+    // 같은 이름의 커뮤니티 식당에 인증 뱃지를 켜요
+    await api(`community_restaurants?name=eq.${encodeURIComponent(name)}`, { method: "PATCH", body: JSON.stringify({ owner_verified: true }) });
+    toast("인증 승인 ✓"); loadOwners(); loadApproved();
+  } catch (e) { toast("실패: " + e.message); }
+}
+
+async function ownerStatus(id, status) {
+  try {
+    await api(`owner_verifications?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    toast("거절했어요"); loadOwners();
+  } catch (e) { toast("실패: " + e.message); }
+}
+
+/* 저장된 키가 있으면 자동 연결 */
+if (KEY) { $("key").value = KEY; connect(); }
+</script>
+</body>
+</html>
