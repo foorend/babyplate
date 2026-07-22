@@ -80,6 +80,7 @@
   <input id="key" type="password" placeholder="sb_secret_... 서비스 키 붙여넣기" />
   <button class="primary" onclick="connect()">연결</button>
   <button onclick="localStorage.removeItem('bp_admin_key');location.reload()">키 지우기</button>
+  <pre id="connErr" style="display:none;white-space:pre-wrap;word-break:break-all;background:#fee;color:#900;padding:12px;border-radius:8px;margin-top:12px;font-size:13px"></pre>
 </div>
 
 <div id="app" style="display:none">
@@ -153,12 +154,16 @@ async function api(path, opts = {}) {
 async function connect() {
   KEY = $("key").value.trim() || KEY;
   if (!KEY) return toast("서비스 키를 입력해주세요");
+  const errBox = $("connErr");
+  errBox.style.display = "none"; errBox.textContent = "";
+  const keyHint = KEY.slice(0, 10) + "…(" + KEY.length + "자)";
   // 1) 유효한 키인지 공개 테이블로 확인해요. 유효하면 일단 로그인시켜요.
   try {
     await api("community_restaurants?select=id&limit=1");
   } catch (e) {
     console.error(e);
-    toast("연결 실패 — 키가 올바른지 확인하세요: " + e.message);
+    errBox.style.display = "block";
+    errBox.textContent = "연결 실패\n입력한 키: " + keyHint + "\n\n" + e.message;
     return;
   }
   localStorage.setItem("bp_admin_key", KEY);
