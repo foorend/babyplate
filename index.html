@@ -153,21 +153,24 @@ async function api(path, opts = {}) {
 async function connect() {
   KEY = $("key").value.trim() || KEY;
   if (!KEY) return toast("서비스 키를 입력해주세요");
+  // 1) 유효한 키인지 공개 테이블로 확인해요. 유효하면 일단 로그인시켜요.
   try {
-    // 사장님 인증(비공개 테이블)로 테스트해요. publishable 키로는 이 조회가
-    // 거부되므로, 여기서 걸러야 "다른 섹션은 뜨는데 사장님 인증만 안 뜨는" 혼선을 막아요.
-    await api("owner_verifications?select=id&limit=1");
-    localStorage.setItem("bp_admin_key", KEY);
-    $("app").style.display = "block";
-    loadAll();
-    startPolling();
+    await api("community_restaurants?select=id&limit=1");
   } catch (e) {
     console.error(e);
-    if (/401|permission denied|42501/i.test(e.message)) {
-      toast("이 키로는 관리자 권한이 없어요. sb_secret_ 서비스 키인지 확인하세요");
-    } else {
-      toast("연결 실패 — 키를 확인해주세요");
-    }
+    toast("연결 실패 — 키가 올바른지 확인하세요: " + e.message);
+    return;
+  }
+  localStorage.setItem("bp_admin_key", KEY);
+  $("app").style.display = "block";
+  loadAll();
+  startPolling();
+  // 2) 로그인 후, 서비스 키인지(비공개 테이블 읽기 가능?) 별도로 확인해 경고만 띄워요.
+  try {
+    await api("owner_verifications?select=id&limit=1");
+  } catch (e) {
+    console.error(e);
+    toast("⚠️ 이 키로는 사장님 인증(비공개)을 못 읽어요. sb_secret_ 서비스 키가 맞는지 확인하세요");
   }
 }
 
