@@ -89,7 +89,7 @@
     <a href="#s-photos">📷 사진 <b id="n-photos">0</b></a>
     <a href="#s-reports">🙋 제보 <b id="n-reports">0</b></a>
     <a href="#s-owners">👨‍🍳 인증 <b id="n-owners">0</b></a>
-    <a href="#" onclick="loadAll();return false">🔄 새로고침</a>
+    <a href="#" onclick="loadAll();return false">🔄 새로고침 <b>자동</b></a>
   </nav>
 
   <h2 id="s-pending">🏪 승인 대기 식당 <span class="count" id="c-pending">0</span></h2>
@@ -158,6 +158,7 @@ async function connect() {
     localStorage.setItem("bp_admin_key", KEY);
     $("app").style.display = "block";
     loadAll();
+    startPolling();
   } catch (e) {
     toast("연결 실패 — 키를 확인해주세요");
     console.error(e);
@@ -165,6 +166,20 @@ async function connect() {
 }
 
 function loadAll() { loadPending(); loadApproved(); loadPhotos(); loadReports(); loadOwners(); }
+
+// 새 제안·사진·제보·사장님 인증이 들어오면 바로 보이도록 10초마다 자동 새로고침해요.
+let POLL = null;
+function startPolling() {
+  if (POLL) return;
+  POLL = setInterval(() => {
+    // 좌표·이름을 편집 중(입력창에 커서)일 땐 건너뛰어요 — 새로고침이 입력을 지우지 않게
+    const el = document.activeElement;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
+    // 탭이 백그라운드면 굳이 호출 안 해요
+    if (document.hidden) return;
+    loadAll();
+  }, 10000);
+}
 
 /* ── 식당 카드 (대기/승인 공용) ── */
 function restaurantCard(r, approved) {
